@@ -2,13 +2,18 @@ require 'httpclient'
 require 'json'
 require 'uri'
 
+## Azure Ad から OAuthを用いてTokenの取得を行うためのClass
 class AzureAdOauthManager
     attr_accessor :tenantId
     attr_accessor :clientId
     attr_accessor :clientSeacret
     attr_accessor :resourceUrl
 
-    #コンストラクタ
+    # コンストラクタ
+    # Tenant ID：***.onmicrosoft.com
+    # Client ID：XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXX
+    # Client Seacret： 
+    # Resource URL https://XXX.crmX.dynamics.com/
     def initialize(tenantId, clientId, clientSeacret, resourceUrl)
         @tenantId = tenantId
         @clientId = clientId
@@ -16,8 +21,8 @@ class AzureAdOauthManager
         @resourceUrl = resourceUrl
     end
 
-    #Tokenオブジェクトの取得
-    def get_token
+    # Tokenオブジェクトの取得
+    def get_token()
         
         oauthUrl = "https://login.microsoftonline.com/#{@tenantId}/oauth2/token"
         
@@ -31,16 +36,40 @@ class AzureAdOauthManager
     end
 end
 
-con = AzureAdOauthManager.new('sugi43.onmicrosoft.com','517b7991-bb75-44df-8adf-1cf9c0a65c1a','Z26i0/pCYeV44gqdUYEmbYqztrNTUbLBDARMSR04Wu0=','https://sugi43.crm7.dynamics.com/')
+def Main()
 
-token = con.get_token()
+    con = AzureAdOauthManager.new(
+        'XXXX.onmicrosoft.com',
+        'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXX',
+        'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+        'https://XXXX.crmX.dynamics.com/')
 
-dynamicsUrl = "https://sugi43.api.crm7.dynamics.com/api/data/v8.2/accounts?$select=name&$top=5"
-header =[['Accept','application/json'],['OData-MaxVersion','4.0'],['OData-Version','4.0'],['Authorization','Bearer ' + token['access_token']]]
+    ## Tokenを取得
+    token = con.get_token()
 
-client = HTTPClient.new
+    ## HTTP Client を生成
+    client = HTTPClient.new
+    
+    ## Request URL
+    ## 取引先企業（Accounts）レコードを取得 上位5件 対象フィールドは名前（name）
+    dynamicsUrl = "https://XXXX.api.crmX.dynamics.com/api/data/v8.2/accounts?$select=name&$top=5"
 
-res = client.get(dynamicsUrl,nil,header)
+    #＃ Header Authorizationに取得したTokenを付与
+    header =[
+        ['Accept','application/json'],
+        ['OData-MaxVersion','4.0'],
+        ['OData-Version','4.0'],
+        ['Authorization','Bearer ' + token['access_token']]
+    ]
 
+    
+    res = client.get(dynamicsUrl,nil,header)
 
-p res
+    ## 取引先企業レコード一覧を取得
+    accounts = JSON.parse(res.body)['value']
+
+    ## For で取引先企業を取得して、コンソールに企業名を出力
+    for value in accounts do
+        puts value['name']
+    end
+end
